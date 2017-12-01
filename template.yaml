@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: java-template
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${APPLICATION_NAME}:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        uri: "https://github.com/domenicbove/openshift-ssl-server"
+        ref: "master"
+    strategy:
+      sourceStrategy:
+        from:
+          kind: DockerImage
+          name: registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift
+      type: Source
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}-${VERSION}
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+    template:
+      metadata:
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+      spec:
+        containers:
+        - name: ${APPLICATION_NAME}-${VERSION}
+          image: ${APPLICATION_NAME}
+          env:
+            - name: keystore_jks
+              value: /var/run/secrets/java.io/keystores/keystore.jks
+            - name: password
+              value: changeit
+          ports:
+          - containerPort: 8443
+            protocol: TCP
+          resources: {}
+          volumeMounts:
+            - name: keystore-volume
+              mountPath: /var/run/secrets/java.io/keystores
+        initContainers:
+        - name: pem-to-keystore
+          image: registry.access.redhat.com/redhat-sso-7/sso71-openshift:1.1-16
+          env:
+            - name: keyfile
+              value: /var/run/secrets/openshift.io/services_serving_certs/tls.key
+            - name: crtfile
+              value: /var/run/secrets/openshift.io/services_serving_certs/tls.crt
+            - name: keystore_pkcs12
+              value: /var/run/secrets/java.io/keystores/keystore.pkcs12
+            - name: keystore_jks
+              value: /var/run/secrets/java.io/keystores/keystore.jks
+            - name: password
+              value: changeit
+          command: ['/bin/bash']
+          args: ['-c', "openssl pkcs12 -export -inkey $keyfile -in $crtfile -out $keystore_pkcs12 -password pass:$password && keytool -importkeystore -noprompt -srckeystore $keystore_pkcs12 -srcstoretype pkcs12 -destkeystore $keystore_jks -storepass $password -srcstorepass $password"]
+          volumeMounts:
+            - name: keystore-volume
+              mountPath: /var/run/secrets/java.io/keystores
+            - name: service-certs
+              mountPath: /var/run/secrets/openshift.io/services_serving_certs
+        volumes:
+          - name: keystore-volume
+            emtpyDir: {}
+          - name: service-certs
+            secret:
+              secretName: service-certs
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}
+        from:
+          kind: ImageStreamTag
+          name: ${APPLICATION_NAME}:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    port:
+      targetPort: 8443-tcp
+    tls:
+      termination: reencrypt
+    to:
+      kind: Service
+      name: ${APPLICATION_NAME}
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: service-certs
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    ports:
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+parameters:
+- name: APPLICATION_NAME
+  description: The name for the application.
+  displayName: Application name
+  value: ssl-server
+  required: true
+- name: VERSION
+  description: Deployment version
+  displayName: Deployment version
+  required: true

@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: java-template
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: ${APPLICATION_NAME}-service-certs
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    ports:
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: ${APPLICATION_NAME}
+    name: ${APPLICATION_NAME}
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: ${APPLICATION_NAME}
+    template:
+      metadata:
+        labels:
+          app: ${APPLICATION_NAME}
+          deploymentconfig: ${APPLICATION_NAME}
+      spec:
+        containers:
+        - name: ${APPLICATION_NAME}
+          image: ${APPLICATION_NAME}
+          env:
+            - name: keystore_jks
+              value: /var/run/secrets/java.io/keystores/keystore.jks
+            - name: password
+              value: changeit
+          ports:
+          - containerPort: 8443
+            protocol: TCP
+          resources: {}
+          volumeMounts:
+            - name: keystore-volume
+              mountPath: /var/run/secrets/java.io/keystores
+        initContainers:
+        - name: pem-to-keystore
+          image: registry.access.redhat.com/redhat-sso-7/sso71-openshift:1.1-16
+          env:
+            - name: keyfile
+              value: /var/run/secrets/openshift.io/services_serving_certs/tls.key
+            - name: crtfile
+              value: /var/run/secrets/openshift.io/services_serving_certs/tls.crt
+            - name: keystore_pkcs12
+              value: /var/run/secrets/java.io/keystores/keystore.pkcs12
+            - name: keystore_jks
+              value: /var/run/secrets/java.io/keystores/keystore.jks
+            - name: password
+              value: changeit
+          command: ['/bin/bash']
+          args: ['-c', "openssl pkcs12 -export -inkey $keyfile -in $crtfile -out $keystore_pkcs12 -password pass:$password && keytool -importkeystore -noprompt -srckeystore $keystore_pkcs12 -srcstoretype pkcs12 -destkeystore $keystore_jks -storepass $password -srcstorepass $password"]
+          volumeMounts:
+            - name: keystore-volume
+              mountPath: /var/run/secrets/java.io/keystores
+            - name: service-certs
+              mountPath: /var/run/secrets/openshift.io/services_serving_certs
+        volumes:
+          - name: keystore-volume
+            emtpyDir: {}
+          - name: service-certs
+            secret:
+              secretName: ${APPLICATION_NAME}-service-certs
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APPLICATION_NAME}
+        from:
+          kind: ImageStreamTag
+          name: ${IMAGE_NAME}:${IMAGE_TAG}
+      type: ImageChange
+parameters:
+- name: APPLICATION_NAME
+  description: The name for the application.
+  displayName: Application name
+  value: ssl-server
+  required: true
+- name: IMAGE_TAG
+  description: Image Tag to Deploy
+  displayName: Image Tag to Deploy
+  value: latest
+  required: true
+- name: IMAGE_NAME
+  description: Image Name to Deploy
+  displayName: Image Name to Deploy
+  value: ssl-server
+  required: true
