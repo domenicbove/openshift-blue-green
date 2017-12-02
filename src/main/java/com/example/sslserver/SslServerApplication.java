@@ -21,8 +21,8 @@ class SecuredServerController {
 
     @RequestMapping("/secured")
     public String secured(){
-	System.out.println("Inside secured()");
-	return "Hello GREEN USER !!! : " + new Date();
+	     System.out.println("Inside secured()");
+	     return "Hello user!!! : " + new Date();
     }
 
 }

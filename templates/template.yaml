@@ -19,7 +19,7 @@ objects:
     runPolicy: Serial
     source:
       git:
-        uri: "https://github.com/domenicbove/openshift-ssl-server"
+        uri: "https://github.com/domenicbove/blue-green"
         ref: "master"
     strategy:
       sourceStrategy:
