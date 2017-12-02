@@ -17,11 +17,11 @@ objects:
     to:
       kind: Service
       name: ${MAJOR_SERVICE_NAME}
-      weight: 75
+      weight: 90
     alternateBackends:
     - kind: Service
       name: ${MINOR_SERVICE_NAME}
-      weight: 25
+      weight: 10
 parameters:
 - name: APPLICATION_NAME
   description: The name for the application.
