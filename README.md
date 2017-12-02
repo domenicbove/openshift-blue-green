@@ -8,6 +8,9 @@ oc process -f https://raw.githubusercontent.com/domenicbove/blue-green/master/te
 ```
 This will automatically start a build and trigger a deployment with a secure route exposed. Hit the /secured endpoint on the route!
 
+At this point our deployment is structured like this:
+![alt text](https://raw.githubusercontent.com/domenicbove/blue-green/master/images/one.png)
+
 Now lets create the "green" version. To do this we can patch the build config to push to a new image tag:
 ```
 oc patch bc ssl-server -p '{"spec":{"output":{"to":{"kind": "ImageStreamTag", "name": "ssl-server:green"}}}}'
