@@ -4,12 +4,12 @@ Step by step guide to doing a Blue/Green deployment with A/B Testing on OpenShif
 
 First lets deploy the "blue" version of the app. Run:
 ```
-oc process -f https://raw.githubusercontent.com/domenicbove/blue-green/master/templates/template.yaml | oc create -f -
+oc process -f https://raw.githubusercontent.com/domenicbove/openshift-blue-green/master/templates/template.yaml | oc create -f -
 ```
 This will automatically start a build and trigger a deployment with a secure route exposed. Hit the /secured endpoint on the route!
 
 At this point our deployment is structured like this:
-![alt text](https://raw.githubusercontent.com/domenicbove/blue-green/master/images/one.png)
+![alt text](https://raw.githubusercontent.com/domenicbove/openshift-blue-green/master/images/one.png)
 
 Now lets create the "green" version. To do this we can patch the build config to push to a new image tag:
 ```
