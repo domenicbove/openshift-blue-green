@@ -4,7 +4,7 @@ Step by step guide to doing a Blue/Green deployment with A/B Testing on OpenShif
 
 First lets deploy the "blue" version of the app. Run:
 ```
-oc process -f https://raw.githubusercontent.com/domenicbove/openshift-blue-green/master/templates/template.yaml | oc create -f -
+oc process -f templates/template.yaml | oc create -f -
 ```
 This will automatically start a build and trigger a deployment with a secure route exposed. Hit the /secured endpoint on the route!
 
@@ -32,7 +32,7 @@ oc start-build ssl-server --from-file=target/ssl-server-1.0.0.jar
 ```
 This will build a new image with the green tag. To deploy it run:
 ```
-oc process -f deploy-template.yaml -o yaml APPLICATION_NAME=ssl-server-green IMAGE_TAG=green | oc create -f -
+oc process -f templates/deploy-template.yaml -o yaml APPLICATION_NAME=ssl-server-green IMAGE_TAG=green | oc create -f -
 ```
 Now our OpenShift Project looks like:
 
@@ -46,7 +46,7 @@ Hit the /secured endpoint on the route! You could switch back and forth between 
 
 You can split traffic on a route between two services. Lets update the route to have split traffic:
 ```
-oc process -f split-route-template.yaml MAJOR_SERVICE_NAME=ssl-server MINOR_SERVICE_NAME=ssl-server-green | oc apply -f -
+oc process -f templates/split-route-template.yaml MAJOR_SERVICE_NAME=ssl-server MINOR_SERVICE_NAME=ssl-server-green | oc apply -f -
 ```
 At this point our deployment looks like so:
 
@@ -73,7 +73,7 @@ oc patch route ssl-server -p '{"spec":{"to":{"kind": "Service","name": "ssl-serv
 
 And then update the image in the "blue" deployment to be the "green" image
 ```
-oc process -f deploy-template.yaml -o yaml IMAGE_TAG=green | oc apply -f -
+oc process -f templates/deploy-template.yaml -o yaml IMAGE_TAG=green | oc apply -f -
 ```
 
 ![alt text](https://raw.githubusercontent.com/domenicbove/openshift-blue-green/master/images/five.png)
@@ -84,7 +84,7 @@ This will set both deployments to be the same. All thats left is to switch back 
 
 To do this run:
 ```
-oc process -f route-template.yaml | oc apply -f -
+oc process -f templates/route-template.yaml | oc apply -f -
 oc delete svc ssl-server-green
 oc delete dc ssl-server-green
 ```
