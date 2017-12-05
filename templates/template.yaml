@@ -40,19 +40,19 @@ objects:
   metadata:
     labels:
       app: ${APPLICATION_NAME}
-    name: ${APPLICATION_NAME}-${VERSION}
+    name: ${APPLICATION_NAME}
   spec:
     replicas: 1
     selector:
-      deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+      deploymentconfig: ${APPLICATION_NAME}
     template:
       metadata:
         labels:
           app: ${APPLICATION_NAME}
-          deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+          deploymentconfig: ${APPLICATION_NAME}
       spec:
         containers:
-        - name: ${APPLICATION_NAME}-${VERSION}
+        - name: ${APPLICATION_NAME}
           image: ${APPLICATION_NAME}
           env:
             - name: keystore_jks
@@ -92,7 +92,7 @@ objects:
             emtpyDir: {}
           - name: service-certs
             secret:
-              secretName: service-certs
+              secretName: ${APPLICATION_NAME}-service-certs
     triggers:
     - imageChangeParams:
         automatic: true
@@ -122,7 +122,7 @@ objects:
   kind: Service
   metadata:
     annotations:
-      service.alpha.openshift.io/serving-cert-secret-name: service-certs
+      service.alpha.openshift.io/serving-cert-secret-name: ${APPLICATION_NAME}-service-certs
     labels:
       app: ${APPLICATION_NAME}
     name: ${APPLICATION_NAME}
@@ -133,14 +133,10 @@ objects:
       protocol: TCP
       targetPort: 8443
     selector:
-      deploymentconfig: ${APPLICATION_NAME}-${VERSION}
+      deploymentconfig: ${APPLICATION_NAME}
 parameters:
 - name: APPLICATION_NAME
   description: The name for the application.
   displayName: Application name
   value: ssl-server
-  required: true
-- name: VERSION
-  description: Deployment version
-  displayName: Deployment version
   required: true
